@@ -245,3 +245,22 @@ button:hover {
 .modal button:last-of-type:hover {
   background: #b3b3b3;
 }
+
+@media (max-width: 600px) {
+  .employee-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .card-container {
+    grid-template-columns: 1fr;
+  }
+
+  .modal {
+    width: 90vw;
+    top: 20%;
+    transform: translate(-50%, -20%);
+  }
+}
+
