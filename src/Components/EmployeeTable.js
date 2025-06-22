@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./EmployeeTable.css";
+import { API_BASE } from "../api";
 
 /* ——————————————————————————————————————————————— */
 /*  1.  API root: Vercel env  → REACT_APP_API_URL        */
