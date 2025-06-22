@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+axios.get(`${API_BASE}/Employee`)
 
 function EmployeeTable() {
   const [employees, setEmployees] = useState([]);
