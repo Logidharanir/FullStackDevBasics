@@ -2,6 +2,13 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./EmployeeTable.css";
 
+/* ────────────────────────────────────────────────────────────── */
+/*  Set the API root once.  Works on Vercel (env-var) or locally  */
+/* ────────────────────────────────────────────────────────────── */
+const API_BASE =
+  process.env.REACT_APP_API_URL || "https://dotnetbackend.onrender.com/api";
+
+/* blank template for the modal form */
 const emptyEmployee = {
   employeeId: "",
   name: "",
@@ -12,51 +19,46 @@ const emptyEmployee = {
 };
 
 const EmployeeTable = () => {
+  /* ---------------- state ---------------- */
   const [employees, setEmployees] = useState([]);
-  const [viewType, setViewType] = useState("table");
-  const [action, setAction] = useState(""); // 'PUT' or 'CREATE'
+  const [viewType, setViewType] = useState("table"); // table | card
+  const [action, setAction] = useState("");          // CREATE | PUT | ""
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [formData, setFormData] = useState(emptyEmployee);
 
-  // Fetch all employees
+  /* ---------------- helpers ---------------- */
+
+  /** GET /Employee */
   const fetchEmployees = () => {
     axios
-      .get("http://localhost:5086/api/Employee")
+      .get(`${API_BASE}/Employee`)
       .then((res) => setEmployees(res.data))
-      .catch((err) => console.error(err));
+      .catch((err) => console.error("GET /Employee failed:", err));
   };
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
+  useEffect(fetchEmployees, []);
 
-  // Handle input change
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  /** update form state on input change */
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  /** open modal for create or edit */
+  const openAction = (type, emp = null) => {
+    setAction(type);                 // "CREATE" or "PUT"
+    setSelectedEmployee(emp);
+    setFormData(emp ? emp : emptyEmployee);
   };
-
-  // Open modal for create or update
-  const openAction = (actionType, employee = null) => {
-    setAction(actionType);
-    setSelectedEmployee(employee);
-    if (employee) setFormData(employee);
-    else setFormData(emptyEmployee);
-  };
-
+  /** close the modal */
   const closeModal = () => {
     setAction("");
     setSelectedEmployee(null);
     setFormData(emptyEmployee);
   };
 
-  // Create new employee
+  /** POST /Employee/add */
   const createEmployee = () => {
     axios
-      .post("http://localhost:5086/api/Employee/add", formData)
+      .post(`${API_BASE}/Employee/add`, formData)
       .then((res) => {
         alert("Employee created!");
         setEmployees((prev) => [...prev, res.data]);
@@ -65,11 +67,11 @@ const EmployeeTable = () => {
       .catch((err) => alert("Create failed: " + err));
   };
 
-  // Update existing employee (PUT)
+  /** PUT /Employee/{id} */
   const updateEmployee = () => {
     if (!selectedEmployee) return alert("Select employee first");
     axios
-      .put(`http://localhost:5086/api/Employee/${selectedEmployee.employeeId}`, formData)
+      .put(`${API_BASE}/Employee/${selectedEmployee.employeeId}`, formData)
       .then(() => {
         alert("Employee updated!");
         setEmployees((prev) =>
@@ -82,24 +84,25 @@ const EmployeeTable = () => {
       .catch((err) => alert("Update failed: " + err));
   };
 
-  // Delete employee
+  /** DELETE /Employee/{id} */
   const deleteEmployee = (id) => {
-    if (window.confirm(`Are you sure you want to delete employee ${id}?`)) {
-      axios
-        .delete(`http://localhost:5086/api/Employee/${id}`)
-        .then(() => {
-          alert("Employee deleted!");
-          setEmployees((prev) => prev.filter((emp) => emp.employeeId !== id));
-        })
-        .catch((error) => alert("DELETE failed: " + error));
-    }
+    if (!window.confirm(`Delete employee ${id}?`)) return;
+    axios
+      .delete(`${API_BASE}/Employee/${id}`)
+      .then(() => {
+        alert("Employee deleted!");
+        setEmployees((prev) => prev.filter((emp) => emp.employeeId !== id));
+      })
+      .catch((err) => alert("DELETE failed: " + err));
   };
+
+  /* ---------------- UI ---------------- */
 
   return (
     <div className="employee-container" style={{ padding: 20 }}>
       <h2 style={{ textAlign: "center" }}>Employee List</h2>
 
-      {/* View toggle buttons */}
+      {/* view toggles + create button */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <button onClick={() => setViewType("table")} disabled={viewType === "table"}>
           Table View
@@ -107,13 +110,12 @@ const EmployeeTable = () => {
         <button onClick={() => setViewType("card")} disabled={viewType === "card"}>
           Card View
         </button>{" "}
-        {/* Create button always visible */}
         <button onClick={() => openAction("CREATE")} style={{ marginLeft: 20 }}>
           + Create New Employee
         </button>
       </div>
 
-      {/* Modal form */}
+      {/* ---------- Modal form (Create / Update) ---------- */}
       {action && (
         <div
           style={{
@@ -121,125 +123,63 @@ const EmployeeTable = () => {
             top: "30%",
             left: "50%",
             transform: "translate(-50%, -30%)",
-            background: "white",
+            background: "#fff",
             padding: 30,
             boxShadow: "0 0 15px rgba(0,0,0,0.35)",
-            zIndex: 2000,
             borderRadius: 10,
             width: 350,
+            zIndex: 2000,
           }}
         >
           <h3>{action === "CREATE" ? "Create New Employee" : "Update Employee"}</h3>
 
-          <label>
-            Employee ID:<br />
-            <input
-              type="number"
-              name="employeeId"
-              value={formData.employeeId}
-              onChange={handleChange}
-              disabled={action !== "CREATE"} // ID editable only on create
-              required
-            />
-          </label>
-          <br />
-          <label>
-            Name:<br />
-            <input
-              type="text"
-              name="name"
-              value={formData.name || ""}
-              onChange={handleChange}
-              required
-            />
-          </label>
-          <br />
-          <label>
-            Age:<br />
-            <input
-              type="number"
-              name="age"
-              value={formData.age || ""}
-              onChange={handleChange}
-              required
-            />
-          </label>
-          <br />
-          <label>
-            Salary:<br />
-            <input
-              type="number"
-              name="salary"
-              value={formData.salary || ""}
-              onChange={handleChange}
-              required
-            />
-          </label>
-          <br />
-          <label>
-            Department ID:<br />
-            <input
-              type="number"
-              name="departmentId"
-              value={formData.departmentId || ""}
-              onChange={handleChange}
-              required
-            />
-          </label>
-          <br />
-          <label>
-            Manager ID:<br />
-            <input
-              type="number"
-              name="managerId"
-              value={formData.managerId || ""}
-              onChange={handleChange}
-            />
-          </label>
-          <br />
-          <br />
-          <button
-            onClick={() => {
-              if (action === "CREATE") createEmployee();
-              else if (action === "PUT") updateEmployee();
-            }}
-          >
-            Submit
-          </button>
-          <button onClick={closeModal} style={{ marginLeft: 10 }}>
-            Cancel
-          </button>
+          {/* input fields */}
+          {[
+            { label: "Employee ID", name: "employeeId", type: "number", disabled: action !== "CREATE" },
+            { label: "Name",        name: "name",       type: "text"   },
+            { label: "Age",         name: "age",        type: "number" },
+            { label: "Salary",      name: "salary",     type: "number" },
+            { label: "Department ID", name: "departmentId", type: "number" },
+            { label: "Manager ID",    name: "managerId",   type: "number" },
+          ].map(({ label, name, type, disabled }) => (
+            <label key={name} style={{ display: "block", marginTop: 8 }}>
+              {label}:<br />
+              <input
+                type={type}
+                name={name}
+                value={formData[name] || ""}
+                onChange={handleChange}
+                disabled={disabled}
+                required
+              />
+            </label>
+          ))}
+
+          <div style={{ marginTop: 15 }}>
+            <button onClick={() => (action === "CREATE" ? createEmployee() : updateEmployee())}>
+              Submit
+            </button>
+            <button onClick={closeModal} style={{ marginLeft: 10 }}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Table View */}
+      {/* ---------- TABLE VIEW ---------- */}
       {viewType === "table" && (
-        <table
-          border="1"
-          cellPadding="10"
-          cellSpacing="0"
-          className="employee-table"
-          style={{ width: "100%" }}
-        >
+        <table className="employee-table" cellPadding={10} style={{ width: "100%" }}>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Age</th>
-              <th>Salary</th>
-              <th>Department ID</th>
-              <th>Manager ID</th>
-              <th>Actions</th>
+              <th>ID</th><th>Name</th><th>Age</th><th>Salary</th>
+              <th>Dept ID</th><th>Mgr ID</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {employees.map((emp) => (
               <tr key={emp.employeeId}>
-                <td>{emp.employeeId}</td>
-                <td>{emp.name}</td>
-                <td>{emp.age}</td>
-                <td>{emp.salary}</td>
-                <td>{emp.departmentId}</td>
+                <td>{emp.employeeId}</td><td>{emp.name}</td><td>{emp.age}</td>
+                <td>{emp.salary}</td><td>{emp.departmentId}</td>
                 <td>{emp.managerId || "N/A"}</td>
                 <td>
                   <button onClick={() => openAction("PUT", emp)}>Edit</button>{" "}
@@ -251,7 +191,7 @@ const EmployeeTable = () => {
         </table>
       )}
 
-      {/* Card View */}
+      {/* ---------- CARD VIEW ---------- */}
       {viewType === "card" && (
         <div className="card-container" style={{ display: "flex", flexWrap: "wrap", gap: 15 }}>
           {employees.map((emp) => (
@@ -267,22 +207,12 @@ const EmployeeTable = () => {
               }}
             >
               <h3>{emp.name}</h3>
-              <p>
-                <strong>Employee ID:</strong> {emp.employeeId}
-              </p>
-              <p>
-                <strong>Age:</strong> {emp.age}
-              </p>
-              <p>
-                <strong>Salary:</strong> ₹{emp.salary}
-              </p>
-              <p>
-                <strong>Department ID:</strong> {emp.departmentId}
-              </p>
-              <p>
-                <strong>Manager ID:</strong> {emp.managerId || "N/A"}
-              </p>
-              <div className="button-group" style={{ textAlign: "center", marginTop: 10 }}>
+              <p><strong>ID:</strong> {emp.employeeId}</p>
+              <p><strong>Age:</strong> {emp.age}</p>
+              <p><strong>Salary:</strong> ₹{emp.salary}</p>
+              <p><strong>Dept ID:</strong> {emp.departmentId}</p>
+              <p><strong>Mgr ID:</strong> {emp.managerId || "N/A"}</p>
+              <div style={{ textAlign: "center", marginTop: 10 }}>
                 <button onClick={() => openAction("PUT", emp)}>Edit</button>{" "}
                 <button onClick={() => deleteEmployee(emp.employeeId)}>Delete</button>
               </div>
